@@ -20,7 +20,7 @@ void* thread_routine(void*);
 
 const double func_dx = 1e-9;
 const double func_l = 0;
-const double func_r = 0.5;
+const double func_r = 1;
 double ans = 0;
 double segment = 0;
 
@@ -49,14 +49,17 @@ int main(int argc, char* argv[]) {
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 
-	int args[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+	int* args = calloc(n_threads, sizeof(int));
+	for (int i = 0; i < n_threads; ++i) {
+		args[i] = i + 1;
+	}
 
 	//pthread_mutex_t mutex;
 	pthread_mutex_init(&mutex, NULL);
 	
 	segment = (func_r - func_l) / n_threads;	
 
-	for (long int i = 0; i < n_threads; ++i) {
+	for (int i = 0; i < n_threads; ++i) {
 		int ret_code = 0;
 		ret_code = pthread_create(&tids[i], &attr, 
 				thread_routine, &args[i]);
@@ -80,6 +83,7 @@ int main(int argc, char* argv[]) {
 
 	printf("%.2lf", ans);
 	free(tids);
+	free(args);
 
 	DBG printf("main exited\n");
 }
@@ -103,7 +107,7 @@ void* thread_routine(void* param) {
 
 	pthread_mutex_lock(&mutex);
 	ans += this_ans;
-	DBG printf("thread %d : ans = %.2lf\n", arg, ans);
+	DBG printf("thread %d : ans = %.2lf\n", arg, this_ans);
 	DBG printf("left = %.2lf right = %.2lf \n\n", left, right);
 	pthread_mutex_unlock(&mutex);
 
