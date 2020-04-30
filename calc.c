@@ -26,12 +26,7 @@ void* fiction_routine(void*);
 
 const double func_dx = 1e-9;
 const double func_l = 0;
-<<<<<<< HEAD
 const double func_r = 0.5;
-=======
-const double func_r = 1;
-double ans = 0;
->>>>>>> d43a6e70690a182ab8abb7ed95df85b0668684aa
 double segment = 0;
 
 typedef struct routine_arg {
@@ -68,23 +63,12 @@ int main(int argc, char* argv[]) {
 	segment = (func_r - func_l) / n_threads;	
 	arg_t* args = routine_arg_init(n_threads);
 
-<<<<<<< HEAD
 	cpu_set_t cpu_set;
-=======
-	int* args = calloc(n_threads, sizeof(int));
-	for (int i = 0; i < n_threads; ++i) {
-		args[i] = i + 1;
-	}
->>>>>>> d43a6e70690a182ab8abb7ed95df85b0668684aa
 
 	for (int i = 0; i < n_threads; ++i) {
 		CPU_ZERO(&cpu_set);
 		CPU_SET(i % n_proc, &cpu_set); 
 
-<<<<<<< HEAD
-=======
-	for (int i = 0; i < n_threads; ++i) {
->>>>>>> d43a6e70690a182ab8abb7ed95df85b0668684aa
 		int ret_code = 0;
 		//0 on success
 		ret_code = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t),
@@ -180,15 +164,7 @@ void* thread_routine(void* param) {
 		cur_x += func_dx;
 	}
 
-<<<<<<< HEAD
 	((arg_t*)param) -> ans = ans;
-=======
-	pthread_mutex_lock(&mutex);
-	ans += this_ans;
-	DBG printf("thread %d : ans = %.2lf\n", arg, this_ans);
-	DBG printf("left = %.2lf right = %.2lf \n\n", left, right);
-	pthread_mutex_unlock(&mutex);
->>>>>>> d43a6e70690a182ab8abb7ed95df85b0668684aa
 
 	DBG printf("routine: %.2lf\n", ans);
 	return NULL;
