@@ -1,5 +1,5 @@
 a.out: $(patsubst %.c,%.o,$(wildcard *.c))
-	gcc -Wall -Wextra -pthread $^ -o $@ -lm
+	gcc -Wall -Wextra -std=c99 -pthread $^ -o $@ -lm
 
 clean:
 	rm *.o 
