@@ -167,31 +167,50 @@ int main() {
 	double ans = 0;
 
 	int finished = 0;
-	while (finished < n_threads) {
+	int working = n_cons;
+	while (finished < n_threads && working > 0) {
 		if (poll(fds, n_cons, -1) < 0) {
 			perror("poll\n");
 			exit(-1);
 		}
+			DBG printf("loop\n");
 
 		for (int k = 0; k < n_cons; ++k) {
+			if (cons[k].is_used == 0)
+				continue;
+
 			if (fds[k].revents & POLLIN) {
-				int    tmp = -1;
+				int    tmp = 0;
 				double this_ans = 0;
 				if (recv(fds[k].fd, &tmp, sizeof(int), 0) <= 0) {
-					perror("recv\n");
+					working --;
+					cons[k].is_used = 0;
+					continue;
+					perror("recv tmp\n");
 					exit(-1);
 				}
 				if (recv(fds[k].fd, &this_ans, sizeof(double), 0) <= 0) {
-					perror("recv\n");
+					working --;
+					cons[k].is_used = 0;
+					continue;
+					perror("recv ans\n");
 					exit(-1);
 				}
 				
 				ans += this_ans;
+				DBG printf("RECIEVED %d with answer {%.2lf}\n", tmp, this_ans);
 				finished ++;
 			}
 			
-			//poll error etc?
+			//connection dead?
+			if ((fds[k].revents & POLLHUP) || (fds[k].revents & POLLRDHUP) ||
+			    (fds[k].revents & POLLERR))
+				finished ++;
 		}
+	}
+	if (working <= 0) {
+		printf("worker(s) dead\n");
+		return -1;
 	}
 	printf("\n--------------\n%.2lf\n", ans);
 	fflush(stdout);

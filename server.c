@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
 		.events = POLLIN
 	};
 	if (poll(&tcp_fd_poll, 1, TIMEOUT) <= 0) {
-		perror("TIMEOUT ERROR, CLIENT DIED\n");
+		printf("TIMEOUT ERROR, CLIENT DIED\n");
 		exit (-1);
 	}
 
@@ -145,7 +145,10 @@ int main(int argc, char* argv[]) {
 	arg_t*     args    = calloc(n_threads, sizeof(arg_t)); 
 	pthread_t* threads = calloc(n_threads, sizeof(pthread_t));
 
-	send(client_fd, &n_threads, sizeof(n_threads), 0);
+	if (send(client_fd, &n_threads, sizeof(n_threads), 0) < 0) {
+		perror("send");
+		exit(-1);
+	}
 	//!!check for error!!
 	
 	char garbage = '0';
@@ -181,8 +184,14 @@ int main(int argc, char* argv[]) {
 				perror("pthread_join\n");
 				exit(-1);
 			}
-			send(client_fd, &(args[i].ind), sizeof(int), 0);
-			send(client_fd, &(args[i].ans), sizeof(double), 0);
+			if (send(client_fd, &(args[i].ind), sizeof(int), 0) < 0) {
+				perror("send");
+				exit(-1);
+			}
+			if (send(client_fd, &(args[i].ans), sizeof(double), 0) < 0) {
+				perror("send");
+				exit(-1);
+			}
 		}
 		total_done += done;
 		if (total_done >= n_threads)
