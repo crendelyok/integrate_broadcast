@@ -108,11 +108,16 @@ int main() {
 			continue;
 		}
 		
-		/*
+		
 		int tcp_opt = 1;
-		setsockopt(tcp_fd, SOL_SOCKET, SO_KEEPALIVE,
-			   &tcp_opt, sizeof(tcp_opt));
-		*/
+		int keepcnt_opt = 1;
+		int keepidle_opt = 1;
+		int keepintvl_opt = 1;
+		setsockopt(tcp_fd, SOL_SOCKET,  SO_KEEPALIVE,  &tcp_opt,       sizeof(tcp_opt));
+		setsockopt(tcp_fd, IPPROTO_TCP, TCP_KEEPCNT,   &keepcnt_opt,   sizeof(tcp_opt));
+		setsockopt(tcp_fd, IPPROTO_TCP, TCP_KEEPIDLE,  &keepidle_opt,  sizeof(tcp_opt));
+		setsockopt(tcp_fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl_opt, sizeof(tcp_opt));
+		
 		cons[j].addr    = serv_addr;
 		cons[j].tcp_fd  = tcp_fd;
 		cons[j].is_used = 1;
