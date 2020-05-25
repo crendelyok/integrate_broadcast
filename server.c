@@ -31,15 +31,13 @@
 #define DBG if(0)
 #endif
 
-const double func_dx = 1e-9;
-const double func_l = 0;
-const double func_r = 0.5;
-double segment = 0;
+#include "consts"
 
 typedef struct worker_arg {
 	double left;
 	double right;
 	double ans;
+	int    ind;
 }arg_t;
 
 arg_t* workers_args_init(int);
@@ -49,7 +47,7 @@ void*  thread_routine   (void*);
 #define MAX_BACKLOG 128
 #define PORT        8080
 #define UDP_BUF_LEN 64
-#define TIMEOUT     20
+#define TIMEOUT     2000
 
 int main(int argc, char* argv[]) {
 	int n_threads = validatearg(argc, argv);
@@ -101,7 +99,7 @@ int main(int argc, char* argv[]) {
 	close(udp_fd);
 	//-----------------END BROADCAST--------------//
 
-	DBG printf("BROADCAST FINISHED\nSTARTING TCP\n");
+	DBG printf("BROADCAST FINISHED, STARTING TCP\n");
 	
 	//--------------START TCP CONNECTION----------//
 	
@@ -151,22 +149,31 @@ int main(int argc, char* argv[]) {
 	//!!check for error!!
 	
 	char garbage = '0';
+	int total_done = 0;
 	do {
+
 		if (recv(client_fd, &garbage, sizeof(garbage), MSG_PEEK) <= 0)
 			break;
 
+		printf("NUMBER OF THREADS IS %d\n", n_threads);
+		int done = 0;
 		for (int i = 0; i < n_threads; ++i) {
+			//mb MSG_PEEK | MSG_DONTWAIT
 			if (recv(client_fd, &garbage, sizeof(garbage),
 				 MSG_PEEK | MSG_DONTWAIT) <= 0)
 				break;
+			recv(client_fd, &(args[i].ind),   sizeof(int), 0);
 			recv(client_fd, &(args[i].left),  sizeof(double), 0);
 			recv(client_fd, &(args[i].right), sizeof(double), 0);
+			printf("Recieved: {%d} [%.2lf; %.2lf]\n", 
+				args[i].ind, args[i].left, args[i].right);
 
 			if (pthread_create(&(threads[i]), NULL,
 			    thread_routine, (void *) (&args[i])) != 0) {
 				perror("pthread_create\n");
 				exit(-1);
 			}
+			done++;
 		}
 		
 		for (int i = 0; i < n_threads; ++i) {
@@ -174,10 +181,15 @@ int main(int argc, char* argv[]) {
 				perror("pthread_join\n");
 				exit(-1);
 			}
+			send(client_fd, &(args[i].ind), sizeof(int), 0);
 			send(client_fd, &(args[i].ans), sizeof(double), 0);
 		}
+		total_done += done;
+		if (total_done >= n_threads)
+			break;
+	//mb MSG_PEEK | MSG_DONTWAIT
 	} while (recv(client_fd, &garbage, 
-		 sizeof(garbage), MSG_DONTWAIT | MSG_PEEK) != 0);
+		 sizeof(garbage), MSG_PEEK) != 0);
 
 	close(client_fd);
 	free (args);
@@ -223,7 +235,7 @@ void* thread_routine(void* param) {
 
         ((arg_t*)param) -> ans = ans;
 
-        DBG printf("routine: %.2lf\n", ans);
+        DBG printf("routine [%.2lf; %.2lf] : %.2lf\n", ((arg_t*)param) -> left, right, ans);
         return NULL;
         pthread_exit(0);
 }

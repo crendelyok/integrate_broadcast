@@ -1,0 +1,5 @@
+const double func_dx = 1e-9;
+const double func_l = 0;
+const double func_r = 0.75;
+double       segment = 0;
+

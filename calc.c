@@ -1,4 +1,4 @@
-//---------------CLIENT-------------//
+//---------------CLIENT AKA CALC-------------//
 
 #define _GNU_SOURCE
 
@@ -23,7 +23,7 @@
 #include <poll.h>
 
 
-#define DEBUG 
+//#define DEBUG 
 
 #ifdef DEBUG
 #define DBG
@@ -31,12 +31,7 @@
 #define DBG if(0)
 #endif
 
-int validatearg(int, char**);
-
-const double func_dx = 1e-9;
-const double func_l = 0;
-const double func_r = 0.5;
-double segment = 0;
+#include "consts"
 
 typedef struct routine_arg {
 	double left;
@@ -81,7 +76,8 @@ int main() {
         
 	if (sendto(udp_fd, udp_throw, strlen(udp_throw) + 1, 0,
                    (struct sockaddr*) &client_addr, sizeof(client_addr)) < 0) {
-                       perror("sendto\n");
+		
+                       perror("sendto udp\n");
                        exit(-1);
         }
         
@@ -102,7 +98,7 @@ int main() {
 	while (recvfrom(udp_fd, udp_buf, UDP_BUF_LEN, 0,
                      (struct sockaddr*) &serv_addr, &addrlen) > 0) {
 		
-		printf("GOT BACK MESSAGE: %s\n", udp_buf);
+		printf("Connection established: %s\n", udp_buf);
 
 		int tcp_fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -112,14 +108,16 @@ int main() {
 			continue;
 		}
 		
+		/*
 		int tcp_opt = 1;
 		setsockopt(tcp_fd, SOL_SOCKET, SO_KEEPALIVE,
 			   &tcp_opt, sizeof(tcp_opt));
-		
+		*/
 		cons[j].addr    = serv_addr;
 		cons[j].tcp_fd  = tcp_fd;
 		cons[j].is_used = 1;
 		recv(cons[j].tcp_fd, &(cons[j].num), sizeof(int), 0);
+		printf("server asked for %d threads\n", (cons[j].num));
 
 		++j;
         }
@@ -147,7 +145,7 @@ int main() {
 
 	arg_t* args = calloc(n_threads, sizeof(arg_t));
 	
-	segment = (func_r - func_r) / n_threads;
+	segment = (func_r - func_l) / n_threads;
 	for (int i = 0; i < n_threads; ++i) {
 		args[i].left  = func_l + i * segment;
 		args[i].right = args[i].left + segment;
@@ -156,11 +154,11 @@ int main() {
 	j = 0;
 	for (int i = 0; i < n_cons; ++i) {
 		for (int k = 0; k < cons[i].num; ++k) {
-			int garbage = 0;
+			int garbage = k;
 			send(cons[i].tcp_fd, &garbage,       sizeof(garbage), 0);
 			send(cons[i].tcp_fd, &args[j].left,  sizeof(double),  0);
 			send(cons[i].tcp_fd, &args[j].right, sizeof(double),  0);
-			
+			printf("Sent: {%d} [%.2lf; %.2lf]\n", garbage, args[j].left, args[j].right);
 			++j;
 		}
 	}
@@ -179,16 +177,14 @@ int main() {
 			if (fds[k].revents & POLLIN) {
 				int    tmp = -1;
 				double this_ans = 0;
-				if (recv(fds[k].fd, &this_ans, sizeof(double), 0) <= 0) {
-					perror("recv\n");
-					exit(-1);
-				}
 				if (recv(fds[k].fd, &tmp, sizeof(int), 0) <= 0) {
 					perror("recv\n");
 					exit(-1);
 				}
-				if (tmp < 0) 
+				if (recv(fds[k].fd, &this_ans, sizeof(double), 0) <= 0) {
+					perror("recv\n");
 					exit(-1);
+				}
 				
 				ans += this_ans;
 				finished ++;
@@ -197,7 +193,7 @@ int main() {
 			//poll error etc?
 		}
 	}
-	printf("%.2lf\n", ans);
+	printf("\n--------------\n%.2lf\n", ans);
 	fflush(stdout);
 
 	free(fds);
@@ -218,45 +214,4 @@ arg_t* routine_arg_init(int n_threads) {
 		DBG printf("%2d: [%.2lf, %.2lf]\n", i, args[i].left, args[i].right);
 	}	
 	return args;
-}
-
-double func(double x) {
-	return exp(x);
-}
-
-void* thread_routine(void* param) {
-	register double cur_x = ((arg_t*)param) -> left;
-	register double right = ((arg_t*)param) -> right;
-	register double ans = 0;
-
-	while (cur_x <= right) {
-		ans += func_dx * func(cur_x);	
-		cur_x += func_dx;
-	}
-
-	((arg_t*)param) -> ans = ans;
-
-	DBG printf("routine: %.2lf\n", ans);
-	return NULL;
-	pthread_exit(0);
-}
-
-int validatearg(int argc, char* argv[]) {
-	if (argc != 2) {
-		printf("I need 1 argumet");
-		exit(-1);
-	}
-	char* endptr = NULL;
-	int val = strtol(argv[1], &endptr, 10);
-
-	if (errno == ERANGE || errno == EINVAL || *endptr != '\0') {
-		perror("strtol");
-		exit(-1);
-	}
-
-	if (val < 1) {
-		printf("val < 1");
-		exit(-1);
-	}
-	return val;	
 }
